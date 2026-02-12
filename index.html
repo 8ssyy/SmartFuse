@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SmartFuse | Control Industrial</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bgBody: '#020617', /* Darker than slate-950 */
+                        bgPanel: '#0f172a', /* slate-950 */
+                        bgCard: '#1e293b', /* slate-800 */
+                        borderMain: '#334155', /* slate-700 */
+                        accent: '#3b82f6',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        textMain: '#f8fafc',
+                        textMuted: '#94a3b8'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-bgBody text-textMain antialiased font-sans overflow-hidden">
+
+    <div id="toast" class="toast">
+        <i class="fas fa-info-circle text-accent text-xl"></i>
+        <span id="toast-msg" class="font-medium text-sm">Sistema Iniciado</span>
+    </div>
+
+    <section id="login-view" class="h-screen w-full flex items-center justify-center bg-bgBody p-4 relative">
+        <div class="absolute inset-0 opacity-20"
+            style="background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 24px 24px;"></div>
+
+        <div class="w-full max-w-sm bg-bgPanel border border-borderMain shadow-2xl relative z-10">
+            <div class="h-1 w-full bg-accent"></div>
+            <div class="p-8">
+                <div class="flex flex-col items-center justify-center mb-8">
+                    <img src="Logo_SmartFuse_v2.png" alt="SmartFuse Logo"
+                        class="w-full max-w-[420px] h-auto max-h-[40vh] object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.4)] animate-fadeInUp">
+                    <p class="text-xs text-textMuted font-mono mt-2 tracking-widest">V4.1 INDUSTRIAL</p>
+                </div>
+
+                <form id="loginForm" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase mb-1">ID Operador /
+                            Nombre</label>
+                        <input type="text" id="username"
+                            class="w-full bg-bgBody border border-borderMain p-2.5 text-white text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                            placeholder="Ej. Juan Perez" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase mb-1">Rol de Acceso</label>
+                        <select id="userRoleSelect"
+                            class="w-full bg-bgBody border border-borderMain p-2.5 text-white text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent appearance-none rounded-none">
+                            <option value="Técnico de Mantenimiento">Técnico de Mantenimiento</option>
+                            <option value="Supervisor de Planta">Supervisor de Planta</option>
+                            <option value="Ingeniero de Procesos">Ingeniero de Procesos</option>
+                            <option value="Jefe de Mantenimiento">Jefe de Mantenimiento</option>
+                            <option value="Administrador del Sistema">Administrador del Sistema</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase mb-1">Clave de Acceso</label>
+                        <input type="password" id="password"
+                            class="w-full bg-bgBody border border-borderMain p-2.5 text-white text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                            placeholder="Clave General (1234)">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-accent hover:bg-blue-600 text-white font-bold py-3 text-sm uppercase tracking-wide transition-all border border-transparent hover:border-blue-400 active:scale-95 transform">
+                        Iniciar Sesión
+                    </button>
+                </form>
+            </div>
+            <div class="bg-bgCard p-3 border-t border-borderMain text-center">
+                <p class="text-[10px] text-textMuted font-mono">SYSTEM READY • RESTRICTED ACCESS</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="dashboard-view" class="flex h-screen overflow-hidden hidden">
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/80 z-40 hidden backdrop-blur-sm lg:hidden"
+            onclick="toggleSidebar()"></div>
+
+        <aside id="sidebar"
+            class="w-64 bg-bgPanel border-r border-borderMain flex flex-col fixed inset-y-0 left-0 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-200 z-50">
+            <div class="h-20 flex items-center px-6 border-b border-borderMain bg-bgPanel cursor-pointer group"
+                onclick="navigate('overview', document.querySelector('a[onclick*=\'overview\']'))">
+                <img src="Logo_SmartFuse_v2.png" alt="SmartFuse"
+                    class="h-12 w-auto object-contain group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all">
+            </div>
+
+            <div class="px-5 py-4 border-b border-borderMain">
+                <div class="text-xs text-textMuted uppercase font-bold mb-2">Operador</div>
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-bgCard border border-borderMain flex items-center justify-center text-xs font-mono text-white pointer-events-none select-none"
+                        id="userInitials">--</div>
+                    <div>
+                        <div id="userName" class="text-sm font-bold text-white leading-tight">--</div>
+                        <div id="userRole" class="text-[10px] text-accent font-mono leading-tight">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto">
+                <a onclick="navigate('overview', this)"
+                    class="nav-link active flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i class="fas fa-home w-6 text-center text-xs group-hover:text-accent transition-colors"></i> <span
+                        class="uppercase font-medium text-[11px] tracking-wide">General</span>
+                </a>
+                <a onclick="navigate('add_fuse', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i class="fas fa-plus w-6 text-center text-xs group-hover:text-accent transition-colors"></i> <span
+                        class="uppercase font-medium text-[11px] tracking-wide">Nuevo Componente</span>
+                </a>
+                <a onclick="navigate('search', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i class="fas fa-search w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Buscador</span>
+                </a>
+                <a onclick="navigate('diagram', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i
+                        class="fas fa-project-diagram w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Diagrama Unifilar</span>
+                </a>
+                <a onclick="navigate('stock', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i
+                        class="fas fa-boxes-stacked w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Stock Técnico</span>
+                </a>
+                <a onclick="navigate('requests', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i class="fas fa-box-open w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Pedidos</span>
+                </a>
+                <a onclick="navigate('history', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i class="fas fa-list-ul w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Historial</span>
+                </a>
+                <a onclick="navigate('smartia', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i class="fas fa-robot w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Smart IA</span>
+                </a>
+                <div class="my-2 border-t border-borderMain/50 mx-4"></div>
+                <a onclick="navigate('feedback', this)"
+                    class="nav-link flex items-center px-3 py-2.5 text-sm text-textMuted hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-l-2 border-transparent group">
+                    <i
+                        class="fas fa-comment-dots w-6 text-center text-xs group-hover:text-accent transition-colors"></i>
+                    <span class="uppercase font-medium text-[11px] tracking-wide">Comentarios</span>
+                </a>
+            </nav>
+            <div class="p-3 border-t border-borderMain bg-bgPanel">
+                <button onclick="logout()"
+                    class="w-full flex items-center justify-center gap-2 py-2 text-xs text-textMuted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all uppercase font-bold tracking-wider">
+                    <i class="fas fa-power-off"></i> Salir
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col bg-bgBody relative min-w-0">
+            <header
+                class="h-14 bg-bgPanel border-b border-borderMain flex items-center justify-between px-6 sticky top-0 z-30 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <!-- Mobile Toggle Removed -->
+                    <h2 id="pageTitle"
+                        class="text-sm font-bold text-white uppercase tracking-wider border-l-2 border-accent pl-3">
+                        PANEL GENERAL</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                    <span class="text-[10px] font-mono text-textMuted uppercase">ONLINE</span>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 pb-28 lg:p-6 scroll-smooth">
+
+                <div id="view-overview" class="section-view fade-in space-y-4">
+
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-bgCard border border-borderMain p-4 flex flex-col relative group">
+                            <div class="absolute top-0 right-0 p-1"><i
+                                    class="fas fa-caret-up text-textMuted text-[10px]"></i></div>
+                            <span class="text-[10px] text-textMuted uppercase font-bold tracking-wider mb-1">Total
+                                Unidades</span>
+                            <span class="text-3xl font-mono text-white" id="dash-total">--</span>
+                            <div class="h-1 w-full bg-slate-700 mt-auto">
+                                <div class="h-full bg-slate-500 w-full"></div>
+                            </div>
+                        </div>
+                        <div class="bg-bgCard border border-borderMain p-4 flex flex-col relative">
+                            <span
+                                class="text-[10px] text-textMuted uppercase font-bold tracking-wider mb-1">Operativos</span>
+                            <span class="text-3xl font-mono text-success" id="dash-ok">--</span>
+                            <div class="h-1 w-full bg-slate-700 mt-auto">
+                                <div class="h-full bg-success w-[95%]"></div>
+                            </div>
+                        </div>
+                        <div class="bg-bgCard border border-borderMain p-4 flex flex-col relative">
+                            <span
+                                class="text-[10px] text-textMuted uppercase font-bold tracking-wider mb-1">Observación</span>
+                            <span class="text-3xl font-mono text-warning" id="dash-warn">--</span>
+                            <div class="h-1 w-full bg-slate-700 mt-auto">
+                                <div class="h-full bg-warning w-[20%]"></div>
+                            </div>
+                        </div>
+                        <div class="bg-bgCard border border-borderMain p-4 flex flex-col relative">
+                            <span
+                                class="text-[10px] text-textMuted uppercase font-bold tracking-wider mb-1">Críticos</span>
+                            <span class="text-3xl font-mono text-danger animate-pulse" id="dash-crit">--</span>
+                            <div class="h-1 w-full bg-slate-700 mt-auto">
+                                <div class="h-full bg-danger w-[10%]"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <div class="grid grid-rows-2 gap-4">
+                            <div class="bg-bgCard border border-borderMain p-5 flex justify-between items-center cursor-pointer hover:border-accent hover:bg-slate-800 transition-all group"
+                                onclick="showPendingNotes()">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <i class="fas fa-clipboard-list text-textMuted group-hover:text-accent"></i>
+                                        <h4 class="font-bold text-white text-sm uppercase tracking-wide">Anotaciones
+                                            Pendientes</h4>
+                                    </div>
+                                    <p class="text-[11px] text-textMuted font-mono">Bitácora Técnica</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-2xl font-mono text-white block group-hover:text-accent"
+                                        id="dash-notes-count">0</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-bgCard border border-borderMain p-5 flex justify-between items-center cursor-pointer hover:border-accent hover:bg-slate-800 transition-all group"
+                                onclick="document.querySelector('a[onclick*=\'requests\']').click()">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <i class="fas fa-cubes text-textMuted group-hover:text-accent"></i>
+                                        <h4 class="font-bold text-white text-sm uppercase tracking-wide">Pedidos
+                                            Material</h4>
+                                    </div>
+                                    <p class="text-[11px] text-textMuted font-mono">Reemplazos / Stock</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-2xl font-mono text-white block group-hover:text-accent"
+                                        id="dash-req-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-bgCard border border-borderMain flex flex-col h-full max-h-[300px]">
+                            <div class="p-3 border-b border-borderMain bg-bgPanel flex justify-between items-center">
+                                <h4
+                                    class="text-xs font-bold text-danger uppercase tracking-wide flex items-center gap-2">
+                                    <i class="fas fa-radiation"></i> Atención Requerida
+                                </h4>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-0" id="dash-crit-list">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div id="view-diagram" class="section-view hidden fade-in">
+                    <div
+                        class="bg-bgPanel border border-borderMain p-4 overflow-x-auto min-h-[600px] flex items-center justify-center relative">
+                        <div class="absolute inset-0 opacity-10 pointer-events-none"
+                            style="background-image: linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px); background-size: 20px 20px;">
+                        </div>
+                        <div id="topology-container" class="tree w-max mx-auto z-10"></div>
+                    </div>
+                </div>
+
+                <div id="view-add_fuse" class="section-view hidden fade-in">
+                    <div class="max-w-xl mx-auto bg-bgCard border border-borderMain p-6 shadow-lg">
+                        <div class="border-b border-borderMain pb-4 mb-6 flex justify-between items-center">
+                            <h3 class="text-lg font-bold text-white uppercase tracking-wide">Nuevo Componente</h3>
+                            <span class="text-[10px] text-textMuted font-mono">MODE: INSERT</span>
+                        </div>
+                        <div class="space-y-5">
+                            <div>
+                                <label class="block text-[10px] text-accent uppercase font-bold mb-1 font-mono">ID
+                                    Sistema / Tag</label>
+                                <div class="flex gap-0">
+                                    <input type="text" id="newFuseId" placeholder="Ej. SF-2001"
+                                        class="flex-1 bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none placeholder-slate-700">
+                                    <button onclick="startAddFuseQRScan()"
+                                        class="bg-bgPanel border border-borderMain border-l-0 px-4 text-textMuted hover:text-white hover:bg-slate-800 transition-colors">
+                                        <i class="fas fa-qrcode"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Tipo
+                                        Fusible</label>
+                                    <select id="newFuseType"
+                                        class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none appearance-none">
+                                        <option value="NH-aM">NH-aM (Motor)</option>
+                                        <option value="NH-gG">NH-gG (General)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Amperaje</label>
+                                    <input type="number" id="newFuseAmps" placeholder="63"
+                                        class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Ubicación
+                                    (Tablero)</label>
+                                <select id="newFusePanel"
+                                    class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none appearance-none rounded-none"></select>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Cargas
+                                    Asociadas</label>
+                                <textarea id="newFuseMachines" placeholder="Detalle maquinaria..." rows="2"
+                                    class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none resize-none"></textarea>
+                            </div>
+
+                            <button onclick="addNewFuse()"
+                                class="w-full bg-accent hover:bg-blue-600 text-white font-bold py-3 text-sm uppercase tracking-widest mt-2 border border-blue-400/20 hover:border-blue-300 transition-all active:scale-95 transform">
+                                Registrar Componente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-stock" class="section-view hidden fade-in">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider border-l-4 border-accent pl-3">
+                            Control de Inventario</h3>
+                        <div class="flex gap-2">
+                            <button onclick="navigate('requests', document.querySelector('a[onclick*=\'requests\']'))"
+                                class="bg-bgCard border border-borderMain hover:border-accent text-white px-4 py-2 text-xs uppercase font-bold tracking-wide flex items-center gap-2 transition-all active:scale-95 transform">
+                                <i class="fas fa-shopping-cart"></i> Solicitar Compra
+                            </button>
+                            <button onclick="openIngestModal()"
+                                class="bg-accent text-white px-4 py-2 text-xs uppercase font-bold tracking-wide flex items-center gap-2 transition-all active:scale-95 transform">
+                                <i class="fas fa-qrcode"></i> Añadir Fusible
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="stock-overview">
+                    </div>
+
+                    <div class="bg-bgCard border border-borderMain">
+                        <div class="p-4 border-b border-borderMain bg-bgPanel">
+                            <h4 class="text-xs font-bold text-textMuted uppercase tracking-wide">Fusibles en Almacén
+                            </h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr>
+                                        <th class="font-mono">ID Lote / Tag</th>
+                                        <th class="font-mono">Especificación</th>
+                                        <th class="font-mono">Ingreso</th>
+                                        <th class="font-mono text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stock-inventory-body" class="font-mono text-xs">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-search" class="section-view hidden fade-in">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="bg-bgCard border border-borderMain p-4 mb-6 flex flex-col md:flex-row gap-4">
+                            <div class="flex-1 flex items-center bg-bgBody border border-borderMain p-2">
+                                <i class="fas fa-search text-textMuted ml-2"></i>
+                                <input type="text" id="searchInput"
+                                    class="flex-1 bg-transparent border-none text-white text-lg font-mono focus:ring-0 placeholder-slate-700 ml-2 focus:outline-none"
+                                    placeholder="Buscar ID...">
+                            </div>
+                            <button onclick="searchFuse()"
+                                class="bg-accent px-6 py-4 md:py-2 text-white font-bold text-sm uppercase tracking-wide hover:bg-blue-600 w-full md:w-auto transition-all active:scale-95 transform">Buscar</button>
+                            <button onclick="startQRScan()"
+                                class="bg-bgPanel border border-borderMain px-6 py-4 md:py-2 text-textMuted hover:text-white hover:bg-slate-800 w-full md:w-auto flex items-center justify-center gap-2">
+                                <i class="fas fa-qrcode"></i> <span
+                                    class="md:hidden text-xs font-bold uppercase">Escanear QR</span>
+                            </button>
+                        </div>
+                        <div id="searchResult" class="hidden animate-fadeIn"></div>
+                    </div>
+                </div>
+
+                <div id="view-requests" class="section-view hidden fade-in">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider border-l-4 border-accent pl-3">
+                            Órdenes de Compra</h3>
+                        <button onclick="toggleRequestForm()"
+                            class="bg-bgCard border border-borderMain hover:border-accent text-white px-4 py-2 text-xs uppercase font-bold tracking-wide flex items-center gap-2"><i
+                                class="fas fa-plus"></i> Nueva Solicitud</button>
+                    </div>
+                    <div id="requestForm" class="bg-bgCard border border-borderMain p-5 mb-6 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="md:col-span-3 grid grid-cols-3 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Tipo</label>
+                                    <select id="reqType"
+                                        class="w-full bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                                        <option value="NH00">NH-00</option>
+                                        <option value="NH01">NH-01</option>
+                                        <option value="NH02">NH-02</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Curva</label>
+                                    <select id="reqCurve"
+                                        class="w-full bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                                        <option value="gG">gG</option>
+                                        <option value="aM">aM</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Amperaje</label>
+                                    <select id="reqAmps"
+                                        class="w-full bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                                        <option value="32">32 A</option>
+                                        <option value="63">63 A</option>
+                                        <option value="80">80 A</option>
+                                        <option value="100">100 A</option>
+                                        <option value="125">125 A</option>
+                                        <option value="160">160 A</option>
+                                        <option value="250">250 A</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Prioridad</label>
+                                <select id="reqPriority"
+                                    class="w-full bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                                    <option value="baja">Baja</option>
+                                    <option value="media">Media</option>
+                                    <option value="alta">Alta</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Cantidad</label>
+                                <input type="number" id="reqQty" value="1"
+                                    class="w-full bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                            </div>
+                            <div class="md:col-span-3">
+                                <label
+                                    class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Destino
+                                    y Motivo</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="reqDest" placeholder="Destino"
+                                        class="w-1/3 bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                                    <input type="text" id="reqReason" placeholder="Motivo"
+                                        class="flex-1 bg-bgBody border border-borderMain p-2 text-white text-sm font-mono">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="toggleRequestForm()"
+                                class="px-4 py-2 text-xs text-textMuted hover:text-white uppercase">Cancelar</button>
+                            <button onclick="submitRequest()"
+                                class="bg-accent text-white px-6 py-2 text-xs font-bold uppercase tracking-wide">Procesar</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto border border-borderMain bg-bgCard">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr>
+                                    <th class="font-mono">ID / Fecha</th>
+                                    <th class="font-mono">Material</th>
+                                    <th class="font-mono">Cant</th>
+                                    <th class="font-mono">Prio</th>
+                                    <th class="font-mono">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody" class="font-mono text-xs"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="view-history" class="section-view hidden fade-in">
+                    <h3
+                        class="text-sm font-bold text-white uppercase tracking-wider border-l-4 border-accent pl-3 mb-6">
+                        Log de Sistema</h3>
+                    <div class="space-y-0" id="historyList"></div>
+                </div>
+
+                <div id="view-smartia" class="section-view hidden fade-in h-full flex flex-col">
+                    <div
+                        class="flex-1 flex flex-col bg-bgPanel border border-borderMain shadow-lg overflow-hidden relative">
+                        <!-- Header / Intro -->
+                        <div class="bg-bgCard p-4 border-b border-borderMain flex items-center gap-4">
+                            <div
+                                class="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent">
+                                <i class="fas fa-robot text-accent text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-white uppercase tracking-wide">Smart IA Assistant</h3>
+                                <p class="text-[10px] text-textMuted font-mono">SYSTEM READY • AI POWERED ANALYSIS</p>
+                            </div>
+                        </div>
+
+                        <!-- Chat Area -->
+                        <div id="chatContainer"
+                            class="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-sm bg-bgBody/50 relative">
+                            <!-- Background Grid -->
+                            <div class="absolute inset-0 opacity-5 pointer-events-none"
+                                style="background-image: linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px); background-size: 20px 20px;">
+                            </div>
+
+                            <!-- Initial Message -->
+                            <div class="flex gap-3 animate-fadeInUp">
+                                <div
+                                    class="w-8 h-8 rounded-sm bg-accent flex-shrink-0 flex items-center justify-center text-white text-xs">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div
+                                    class="bg-bgCard border border-borderMain p-3 rounded-tr-xl rounded-br-xl rounded-bl-xl text-textMain max-w-[85%] shadow-md">
+                                    <p>Hola! Soy Smart, el asistente IA de SmartFuse. Estoy conectado a la base de datos
+                                        de la planta para responder tus consultas técnicas.</p>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Response Container -->
+                            <div id="respuesta-ia" class="flex flex-col gap-3"></div>
+                        </div>
+
+                        <!-- Input Area -->
+                        <div class="p-4 bg-bgCard border-t border-borderMain">
+                            <div class="flex gap-2">
+                                <textarea id="input-pregunta"
+                                    class="flex-1 bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none placeholder-slate-600 transition-all resize-none h-12"
+                                    placeholder="Escribe tu consulta aquí..."></textarea>
+                                <button id="btn-consultar"
+                                    class="bg-accent hover:bg-blue-600 text-white font-bold px-6 py-2 text-xs uppercase tracking-widest transition-all active:scale-95 border border-transparent hover:border-blue-400 flex items-center justify-center">
+                                    <i class="fas fa-paper-plane mr-1"></i> Consultar
+                                </button>
+                            </div>
+                            <div class="mt-2 text-center">
+                                <p class="text-[9px] text-textMuted font-mono uppercase">AI Access restricts
+                                    modification. Read-only mode active.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-feedback" class="section-view hidden fade-in">
+                    <div class="max-w-2xl mx-auto bg-bgCard border border-borderMain p-6 shadow-lg">
+                        <div class="border-b border-borderMain pb-4 mb-6 flex justify-between items-center">
+                            <h3 class="text-lg font-bold text-white uppercase tracking-wide">Comentarios Operativos</h3>
+                            <span class="text-[10px] text-textMuted font-mono">FEEDBACK CHANNEL</span>
+                        </div>
+                        <form onsubmit="submitFeedback(event)" class="space-y-5">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Operador</label>
+                                    <input type="text" id="feedbackUser" readonly
+                                        class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:outline-none opacity-70 cursor-not-allowed">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Rol</label>
+                                    <input type="text" id="feedbackRole" readonly
+                                        class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:outline-none opacity-70 cursor-not-allowed">
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Fecha</label>
+                                <input type="text" id="feedbackDate" readonly
+                                    class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:outline-none opacity-70 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-[10px] text-accent uppercase font-bold mb-1 font-mono">Comentario
+                                    / Reporte</label>
+                                <textarea id="feedbackText" rows="5" required
+                                    placeholder="Escriba aquí su comentario, sugerencia o reporte de error..."
+                                    class="w-full bg-bgBody border border-borderMain p-3 text-white text-sm font-mono focus:border-accent focus:outline-none resize-none placeholder-slate-600"></textarea>
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-accent hover:bg-blue-600 text-white font-bold py-3 text-sm uppercase tracking-widest mt-2 border border-blue-400/20 hover:border-blue-300 transition-all active:scale-95 transform flex items-center justify-center gap-2">
+                                <i class="fas fa-paper-plane"></i> Enviar Comentario
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </section>
+
+    <div id="qrOverlay"
+        class="fixed inset-0 bg-black/95 z-[100] hidden flex-col items-center justify-center p-4 font-mono">
+        <div class="relative w-64 h-64 border-2 border-accent mb-8 bg-transparent">
+            <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-white"></div>
+            <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-white"></div>
+            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-white"></div>
+            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-white"></div>
+            <div class="scan-line absolute top-0 w-full h-0.5 bg-red-500 shadow-[0_0_10px_red]"></div>
+            <div class="absolute top-1/2 left-0 w-full text-center text-xs text-accent mt-20">SCANNING...</div>
+        </div>
+        <button onclick="closeQRScan()"
+            class="text-white text-xs border border-white px-6 py-2 uppercase hover:bg-white hover:text-black">Abortar</button>
+    </div>
+
+    <div id="historyModal"
+        class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-bgCard border border-borderMain shadow-2xl w-full max-w-lg animate-fadeIn">
+            <div id="historyModalContent" class="p-6"></div>
+        </div>
+    </div>
+
+    <div id="pendingNotesModal"
+        class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="bg-bgCard border border-borderMain shadow-2xl w-full max-w-2xl animate-fadeIn flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-borderMain flex justify-between items-center bg-bgPanel">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wide flex items-center gap-2"><i
+                        class="fas fa-clipboard-list text-warning"></i> Anotaciones Pendientes</h3>
+                <button onclick="closePendingNotesModal()" class="text-textMuted hover:text-white"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div id="pendingNotesContent" class="p-0 overflow-y-auto flex-1 font-mono text-xs">
+            </div>
+            <div class="p-3 border-t border-borderMain bg-bgPanel text-right">
+                <button onclick="closePendingNotesModal()"
+                    class="text-xs text-textMuted uppercase hover:text-white px-4">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ingestModal"
+        class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-bgCard border border-borderMain shadow-2xl w-full max-w-lg animate-scaleIn">
+            <div class="p-4 border-b border-borderMain flex justify-between items-center bg-bgPanel">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wide">Ingreso Individual</h3>
+                <button onclick="closeIngestModal()" class="text-textMuted hover:text-white"><i
+                        class="fas fa-times"></i></button>
+            </div>
+
+            <div id="ingestStep1" class="p-8 flex flex-col items-center justify-center space-y-6">
+                <div
+                    class="w-16 h-16 bg-bgBody rounded-full flex items-center justify-center border-2 border-dashed border-textMuted group-hover:border-accent">
+                    <i class="fas fa-qrcode text-3xl text-textMuted"></i>
+                </div>
+                <p class="text-center text-xs text-textMuted max-w-[200px]">Escanea el código QR del fusible para
+                    autocompletar los datos.</p>
+                <button onclick="startStockQRScan()"
+                    class="bg-accent text-white font-bold py-3 px-8 text-sm uppercase tracking-wide hover:bg-blue-600 transition-all active:scale-95 transform rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                    <i class="fas fa-camera mr-2"></i> Escanear Código
+                </button>
+            </div>
+
+            <div id="ingestStep2" class="p-6 space-y-4 hidden">
+                <div class="bg-success/10 border border-success/30 p-2 text-center mb-4 rounded">
+                    <span class="text-[10px] text-success font-bold uppercase tracking-wider"><i
+                            class="fas fa-check-circle"></i> Lectura Exitosa</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">ID
+                            Detectado</label>
+                        <input type="text" id="ingestId" readonly
+                            class="w-full bg-slate-800 border border-borderMain p-2 text-accent text-xs font-mono font-bold">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Modelo</label>
+                        <input type="text" id="ingestModel" readonly
+                            class="w-full bg-slate-800 border border-borderMain p-2 text-white text-xs font-mono">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Tipo</label>
+                        <input type="text" id="ingestType" readonly
+                            class="w-full bg-slate-800 border border-borderMain p-2 text-white text-xs font-mono opacity-70">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Curva</label>
+                        <input type="text" id="ingestCurve" readonly
+                            class="w-full bg-slate-800 border border-borderMain p-2 text-white text-xs font-mono opacity-70">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Amperaje</label>
+                        <input type="text" id="ingestAmps" readonly
+                            class="w-full bg-slate-800 border border-borderMain p-2 text-white text-xs font-mono opacity-70">
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="confirmIngest()"
+                        class="w-full bg-success text-black font-bold py-3 text-sm uppercase tracking-wide hover:bg-green-400 transition-all active:scale-95 transform">
+                        Confirmar Ingreso
+                    </button>
+                    <button onclick="resetIngest()"
+                        class="w-full mt-2 text-xs text-textMuted uppercase hover:text-white py-2">
+                        Re-Escanear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="installModal"
+        class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-bgCard border border-borderMain shadow-2xl w-full max-w-lg animate-scaleIn">
+            <div class="p-4 border-b border-borderMain flex justify-between items-center bg-bgPanel">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wide">Instalación de Componente</h3>
+                <button onclick="closeInstallModal()" class="text-textMuted hover:text-white"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-900/50 p-3 border border-borderMain text-center mb-4">
+                    <span class="block text-[10px] text-textMuted uppercase">Componente a Instalar</span>
+                    <span id="installFuseDisplay" class="text-lg font-mono font-bold text-white">--</span>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Tablero
+                        Destino</label>
+                    <select id="installPanel"
+                        class="w-full bg-bgBody border border-borderMain p-2 text-white text-xs font-mono"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-textMuted uppercase font-bold mb-1 font-mono">Maquinaria /
+                        Carga</label>
+                    <input type="text" id="installMachine" placeholder="Ej. Compresor B"
+                        class="w-full bg-bgBody border border-borderMain p-2 text-white text-xs font-mono">
+                </div>
+                <button onclick="confirmInstall()"
+                    class="w-full bg-success text-black font-bold py-3 text-sm uppercase tracking-wide hover:bg-green-400 transition-all active:scale-95 transform">Confirmar
+                    Instalación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE NAVIGATION START -->
+    <!-- Bottom Navbar (Hidden by default, shown on login) -->
+    <div id="mobileNavBar"
+        class="fixed bottom-0 left-0 w-full h-[70px] bg-bgPanel border-t border-borderMain z-[50] flex items-center justify-center lg:hidden shadow-[0_-5px_20px_rgba(0,0,0,0.5)] hidden pb-safe-area">
+        <button onclick="toggleMobileMenu()" id="mobileMenuFab"
+            class="bg-accent text-white w-14 h-14 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform mb-2">
+            <i class="fas fa-bars text-xl"></i>
+        </button>
+    </div>
+
+    <div id="mobileMenuOverlay" onclick="toggleMobileMenu()"
+        class="fixed inset-0 bg-black/80 z-[60] hidden backdrop-blur-sm transition-opacity duration-300 lg:hidden">
+    </div>
+
+    <div id="mobileMenuDrawer"
+        class="fixed bottom-0 left-0 w-full bg-bgPanel border-t-2 border-accent rounded-t-3xl z-[70] transform translate-y-full transition-transform duration-300 ease-out lg:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.7)] pb-6">
+        <div class="flex justify-center pt-4 pb-2" onclick="toggleMobileMenu()">
+        </div>
+
+        <div class="p-4 space-y-1 max-h-[70vh] overflow-y-auto">
+            <a onclick="navigateMobile('overview', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-home"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">General</span>
+            </a>
+
+            <a onclick="navigateMobile('add_fuse', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-plus"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Nuevo Componente</span>
+            </a>
+
+            <a onclick="navigateMobile('search', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-search"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Buscador</span>
+            </a>
+
+            <a onclick="navigateMobile('diagram', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-project-diagram"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Diagrama Unifilar</span>
+            </a>
+
+            <a onclick="navigateMobile('stock', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-boxes-stacked"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Stock Técnico</span>
+            </a>
+
+            <a onclick="navigateMobile('requests', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-box-open"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Pedidos</span>
+            </a>
+
+            <a onclick="navigateMobile('history', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-list-ul"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Historial</span>
+            </a>
+
+            <a onclick="navigateMobile('smartia', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-robot"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Smart IA</span>
+            </a>
+
+            <div class="my-2 border-t border-borderMain/50"></div>
+
+            <a onclick="navigateMobile('feedback', this)"
+                class="mobile-nav-link flex items-center gap-4 p-3 rounded-xl text-textMuted hover:bg-white/5 hover:text-white transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-accent"><i
+                        class="fas fa-comment-dots"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Feedback</span>
+            </a>
+
+            <button onclick="logout()"
+                class="w-full flex items-center gap-4 p-3 rounded-xl text-danger hover:bg-danger/10 transition-all text-left cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-danger/10 flex items-center justify-center text-danger"><i
+                        class="fas fa-power-off"></i></div>
+                <span class="font-bold uppercase text-sm tracking-wider">Salir</span>
+            </button>
+        </div>
+    </div>
+    <!-- MOBILE NAVIGATION END -->
+
+    <script src="contexto.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
