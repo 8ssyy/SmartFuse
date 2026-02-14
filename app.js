@@ -1345,14 +1345,19 @@ async function consultarIA() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
 
     try {
-        // 2. Build Context
-        const contexto = buildSmartContext();
+        // 2. Build Context (Concatena Contexto Técnico global + Datos Dinámicos)
+        const contextoCompleto = construirContextoCompleto();
 
-        // 3. Call API
-        const respuestaTexto = await enviarAGemini(pregunta, contexto);
+        // 3. Create Final Prompt (Concatenation BEFORE API Call as requested)
+        const promptFinal = contextoCompleto + "\n\n---\n\nPREGUNTA DEL USUARIO: " + pregunta;
+
+        console.log("Prompt enviando a Gemini (truncado):", promptFinal.substring(0, 200) + "...");
+
+        // 4. Call API with the FINAL PROMPT
+        const respuestaTexto = await enviarAGemini(promptFinal);
         console.log("Respuesta recibida:", respuestaTexto.substring(0, 50) + "...");
 
-        // 4. Update UI
+        // 5. Update UI
         agregarMensaje(respuestaDiv, 'bot', respuestaTexto);
 
     } catch (error) {
@@ -1365,13 +1370,14 @@ async function consultarIA() {
     }
 }
 
-async function enviarAGemini(pregunta, contexto) {
+async function enviarAGemini(promptFinal) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY_GEMINI}`;
 
+    // Enviar DIRECTAMENTE el promptFinal ya concatenado
     const payload = {
         contents: [{
             parts: [{
-                text: `${contexto}\n\nPREGUNTA USUARIO: ${pregunta}`
+                text: promptFinal
             }]
         }]
     };
@@ -1417,33 +1423,14 @@ function agregarMensaje(container, sender, text) {
     if (scrollParent) scrollParent.scrollTop = scrollParent.scrollHeight;
 }
 
-function buildSmartContext() {
-    if (typeof STORE === 'undefined') {
-        console.warn("STORE no definido, usando contexto vacío");
-        return "Actúa como asistente técnico.";
-    }
-
-    const fuses = STORE.fuses.map(f => `- ${f.id} (${f.model})`).join('\n');
-    const panels = STORE.panels.map(p => `- ${p.id} (${p.name})`).join('\n');
-
-    return `ACT AS: Asistente Técnico Industrial.
-DATOS:
-[TABLEROS]
-${panels}
-[FUSIBLES]
-${fuses}
-
-Responde técnico y breve.`;
-}
-// --- CONTEXTO TÉCNICO BASE ---
-// --- CONTEXTO TÉCNICO BASE ---
-// (Definido en contexto.js para fácil edición)
-
 function construirContextoCompleto() {
-    if (typeof STORE === 'undefined') return CONTEXTO_TECNICO;
+    // Verificar si CONTEXTO_TECNICO está definido (desde contexto.js)
+    const baseContext = (typeof CONTEXTO_TECNICO !== 'undefined') ? CONTEXTO_TECNICO : "Contexto técnico no cargado.";
+
+    if (typeof STORE === 'undefined') return baseContext;
 
     const fusibles = STORE.fuses.map(f =>
-        `- Fuse ID: ${f.id} | Modelo: ${f.model} | Estado: ${f.status} | Tablero: ${f.panel || 'N/A'} -> Carga: ${f.machinery ? f.machinery.join(', ') : 'N/A'}`
+        `- Fuse ID: ${f.id} | Modelo: ${f.model} | Estado: ${f.status} | Tablero: ${f.panel || 'N/A'} -> Carga: ${f.machinery ? f.machinery.join(', ') : 'N/A'} | Condición: ${f.condition}`
     ).join('\n');
 
     const tableros = STORE.panels.map(p =>
@@ -1458,7 +1445,7 @@ function construirContextoCompleto() {
         `-[@${h.date}] ${h.action}: ${h.details}`
     ).join('\n');
 
-    return `${CONTEXTO_TECNICO}
+    return `${baseContext}
 
 === DATOS DINÁMICOS DE TIEMPO REAL ===
 
@@ -1477,6 +1464,5 @@ ${historial}
 === FIN DE DATOS ===
     `;
 }
-
 
 
