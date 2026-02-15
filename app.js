@@ -1298,7 +1298,7 @@ window.navigateMobile = function (viewId, el) {
 
 // --- SMART IA LOGIC (DEBUG MODE) ---
 // API Key for Gemini 2.0 Flash
-const API_KEY_GEMINI = 'AIzaSyAvsL7o_cNaL9pfmnhe_vHbqwOeWRkvWn0';
+const API_KEY_GEMINI = 'AIzaSyDDYCquf9FyYrHm0juU-EzqF_AW-4iEitc';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Sistema listo: Smart IA Inicializado");
@@ -1464,5 +1464,6 @@ ${historial}
 === FIN DE DATOS ===
     `;
 }
+
 
 
